@@ -18,28 +18,28 @@ int main(int argc, char *argv[])
     fscanf(ptr, "%*[^\n]\n");
 
     int buf;
-    int linecount;
+    int processCount;
 
     // [done] traverse el file to know 3adad el processes
 
     // Extract characters from file and store in character c
     for (char c = getc(ptr); c != EOF; c = getc(ptr))
         if (c == '\n') // Increment count if this character is newline
-            linecount++;
+            processCount++;
 
     // Close the file
     fclose(ptr);
-    printf("The file has %d lines\n", linecount);
+    printf("The file has %d lines\n", processCount);
 
     ptr = fopen(argv[1], "r"); // todo el file nakhdo wa2t el run khaliha argv
     fscanf(ptr, "%*[^\n]\n");
 
-    int ids[linecount];
-    int arrivals[linecount];
-    int runtimes[linecount];
-    int priorities[linecount];
+    int ids[processCount];
+    int arrivals[processCount];
+    int runtimes[processCount];
+    int priorities[processCount];
 
-    for (int i = 0; i < linecount; i++)
+    for (int i = 0; i < processCount; i++)
     {
         fscanf(ptr, "%d", &buf);
         ids[i] = buf;
@@ -139,7 +139,25 @@ int main(int argc, char *argv[])
             perror("msgget");
             return 1;
         }
-     
+        int currentProcessIndex=0;
+        while (currentProcessIndex < processCount )
+        {
+
+            struct msgbuffer msg;
+            msg.mtype = 1;
+            msg.proc.processId = ids[currentProcessIndex];
+            msg.proc.arrivalTime = arrivals[currentProcessIndex];
+            msg.proc.runTime = runtimes[currentProcessIndex];
+            msg.proc.priority = priorities[currentProcessIndex];
+            if (msgsnd(msgid, &msg, sizeof(msg.proc), 0) == -1)
+            {
+                perror("msgsnd");
+                exit(1);
+            }
+            // printf("sent process %d\n", currentProcessIndex);
+            // 2. Increment the current process index.
+            currentProcessIndex++;
+        }
         
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
