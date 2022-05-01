@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
         // clk code
         //clk.out
         char *argv[] = {"./clk.out", 0};
-        execv(argv[0], &argv[0], NULL); //mmkn nst3ml execve lw masht8ltsh!!
+        execve(argv[0], &argv[0], NULL); //mmkn nst3ml execve lw masht8ltsh!!
     }
 
     int fork_pid_schedule = fork();
@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
          printf("Current Time is %d\n", x);
     
 
-        key_t key = ftok("./clk.c", 'Z');
+        key_t key = ftok("./clk.c", 'Z'); 
         int msgid = msgget(key, IPC_CREAT | 0666);
         if (msgid == -1)
         {
@@ -148,8 +148,18 @@ int main(int argc, char *argv[])
             msg.proc.processId = ids[currentProcessIndex];
             msg.proc.arrivalTime = arrivals[currentProcessIndex];
             msg.proc.runTime = runtimes[currentProcessIndex];
-            msg.proc.priority = priorities[currentProcessIndex];
-            if (msgsnd(msgid, &msg, sizeof(msg.proc), 0) == -1)
+            if (algorithim_type ==SJF)
+            {
+                msg.proc.priority = runtimes[currentProcessIndex];
+            }else if (algorithim_type ==RR)
+            {
+                msg.proc.priority = 20;
+            }else 
+            {
+                msg.proc.priority = priorities[currentProcessIndex];
+            }
+            
+            if (msgsnd(msgid, &msg, sizeof(msg.proc), 0) == -1) // 0 means IPC_NOWAIT
             {
                 perror("msgsnd");
                 exit(1);

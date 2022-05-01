@@ -16,8 +16,9 @@ typedef short bool;
 struct Node
 {
     struct Node *next;
-    struct process data;
+    struct process *data;
     enum STATUS stat;
+    struct initializeProcessPointer(data,0,0,0,0,0);
 
 };
 
@@ -29,8 +30,9 @@ struct Queue
 };
 
 // A utility function to create a new linked list node.
-struct Node *newNode(struct process data,int status)
+struct Node *newNode(struct process *data,int status)
 {
+    
     struct Node *temp = (struct Node *)malloc(sizeof(struct Node));
     temp->data = data;
     temp->stat = status;
@@ -60,7 +62,7 @@ void enqueue(struct Queue *q,  struct Node* newNode)
     }
 
     struct Node *p = q->Head;
-    if (p->data.priority > temp->data.priority)
+    if (p->data->priority > temp->data->priority)
     {
 
         // Insert New Node before head

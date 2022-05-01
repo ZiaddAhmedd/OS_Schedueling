@@ -10,8 +10,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
-#include <queue.h>
-#include <process_data.h> //msh mot2den hatsht8l wla laa,lw laa include in queue.h
+#include "queue.h"
+#include "process_data.h" //msh mot2den hatsht8l wla laa,lw laa include in queue.h
 
 typedef short bool;
 #define true 1
