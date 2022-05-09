@@ -11,14 +11,15 @@
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
-#include "queue.h"
+
 #include "process_data.h" //msh mot2den hatsht8l wla laa,lw laa include in queue.h
 #include "CircularQueue.h"
+#include "queue.h"
 
 typedef short bool;
 #define true 1
 #define false 0
-//Definitions for algorithims
+// Definitions for algorithims
 #define SJF 1
 #define HPF 2
 #define RR 3
@@ -33,11 +34,11 @@ typedef short ALGORITHIM_TYPE;
 #define SHKEY 300
 
 ///==============================
-//don't mess with this variable//
+// don't mess with this variable//
 int *shmaddr; //
 //===============================
 
-//Message Struct
+// Message Struct
 struct msgbuffer
 {
     long mtype;
@@ -53,13 +54,13 @@ int getClk()
 /*
  * All processes call this function at the beginning to establish communication between them and the clock module.
  * Again, remember that the clock is only emulation!
-*/
+ */
 void initClk()
 {
     int shmid = shmget(SHKEY, 4, 0444);
     while ((int)shmid == -1)
     {
-        //Make sure that the clock exists
+        // Make sure that the clock exists
         printf("Wait! The clock not initialized yet!\n");
         sleep(1);
         shmid = shmget(SHKEY, 4, 0444);
@@ -73,7 +74,7 @@ void initClk()
  * Again, Remember that the clock is only emulation!
  * Input: terminateAll: a flag to indicate whether that this is the end of simulation.
  *                      It terminates the whole system and releases resources.
-*/
+ */
 void initiate_process(struct process *picked_proc, int wait_time, float *total_wait_time)
 {
     picked_proc->startTime = getClk();
@@ -84,7 +85,7 @@ void initiate_process(struct process *picked_proc, int wait_time, float *total_w
 
 void print_statistics(float Ex, float Ex2, int total_processes, float total_wait_time, int total_useful_time)
 {
-    //print statistics
+    // print statistics
     float mean_wta = Ex / total_processes;
     float std_dev_wta = sqrt(Ex2 / total_processes - (mean_wta * mean_wta));
     float mean_waiting_time = total_wait_time / total_processes;
