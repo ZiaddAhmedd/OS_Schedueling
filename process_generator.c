@@ -1,6 +1,8 @@
 #include "headers.h"
 
 void clearResources(int);
+int msgid;
+int send_to_sch;
 
 int main(int argc, char *argv[])
 {
@@ -18,7 +20,7 @@ int main(int argc, char *argv[])
     fscanf(ptr, "%*[^\n]\n");
 
     int buf;
-    int processCount;
+    int processCount =0;
 
     // [done] traverse el file to know 3adad el processes
 
@@ -90,14 +92,21 @@ int main(int argc, char *argv[])
         {
             // SJF.out
 
-            char *argv[] = {"./scheduler.SJF.out", 0};
-            execv(argv[0], &argv[0], NULL);
+            // char *argv[] = {"./scheduler.SJF.out", 0};
+            // execve(argv[0], &argv[0], NULL);
+            char buffer1[20];
+            char buffer2[20];
+            sprintf(buffer1, "%d", processCount);     
+            argv[1] = buffer1;
+        // argv[1] = process_count ; needs to be fixeds
+        if (execv("./scheduler.SJF.out", argv) == -1)
+            perror("failed to execv");
         }
         else if (algorithim_type == HPF)
         {
             // HPF.out
             char *argv[] = {"./scheduler.HPF.out", 0};
-            execv(argv[0], &argv[0], NULL);
+            execve(argv[0], &argv[0], NULL);
         }
         else if (algorithim_type == RR)
         {
@@ -107,7 +116,7 @@ int main(int argc, char *argv[])
             sprintf(quantum_char, "%d", quantum);
 
             char *argv[] = {"./scheduler.RR.out", quantum_char, 0};
-            execv(argv[0], &argv[0], NULL);
+            execve(argv[0], &argv[0], NULL);
         }
         else if (algorithim_type == MLFL)
         {
@@ -115,7 +124,7 @@ int main(int argc, char *argv[])
             sprintf(quantum_char, "%d", quantum);
 
             char *argv[] = {"./scheduler.MLFL.out", quantum_char, 0};
-            execv(argv[0], &argv[0], NULL);
+            execve(argv[0], &argv[0], NULL);
         }
     }
     // char *arr[] = {"./scheduler.c", NULL};
@@ -123,50 +132,51 @@ int main(int argc, char *argv[])
     /// char *args[] = {"./scheduler.c", NULL};
     // execv(args[0], args);
 
-
-    // 4. Use this function after creating the clock process to initialize clock.
-        initClk();
-
-    // To get time use this function.
-         int x = getClk();
-         printf("Current Time is %d\n", x);
-    
-
         key_t key = ftok("./clk.c", 'Z'); 
-        int msgid = msgget(key, IPC_CREAT | 0666);
+        msgid = msgget(key, IPC_CREAT | 0666);
+        struct msgbuffer msg;
         if (msgid == -1)
         {
             perror("msgget");
             return 1;
         }
+        // 4. Use this function after creating the clock process to initialize clock.
+        initClk();
         int currentProcessIndex=0;
+        int x;
         while (currentProcessIndex < processCount )
         {
-
-            struct msgbuffer msg;
-            msg.mtype = 1;
-            msg.proc.processId = ids[currentProcessIndex];
-            msg.proc.arrivalTime = arrivals[currentProcessIndex];
-            msg.proc.runTime = runtimes[currentProcessIndex];
-            if (algorithim_type ==SJF)
+            x = getClk();
+            sleep(1);
+            printf("Current Time is %d\n", x);
+            while(arrivals[currentProcessIndex]==x)
             {
-                msg.proc.priority = runtimes[currentProcessIndex];
-            }else if (algorithim_type ==RR)
-            {
-                msg.proc.priority = 20;
-            }else 
-            {
-                msg.proc.priority = priorities[currentProcessIndex];
+                
+                msg.mtype = 1;
+                msg.proc.processId = ids[currentProcessIndex];
+                msg.proc.arrivalTime = arrivals[currentProcessIndex];
+                msg.proc.runTime = runtimes[currentProcessIndex];
+                msg.proc.size = processCount;
+                if (algorithim_type ==SJF)
+                {
+                    msg.proc.priority = runtimes[currentProcessIndex];
+                }else if (algorithim_type ==RR)
+                {
+                    msg.proc.priority = 20;
+                }else 
+                {
+                    msg.proc.priority = priorities[currentProcessIndex];
+                }
+                send_to_sch = msgsnd(msgid, &msg, 100, !IPC_NOWAIT);
+                if (send_to_sch == 0)
+                {
+                    printf("message successful at time %d \n", x);
+                    //printf ("%d  %d  %d  %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
+                }
+                // printf("sent process %d\n", currentProcessIndex);
+                // 2. Increment the current process index.
+                currentProcessIndex++;
             }
-            
-            if (msgsnd(msgid, &msg, sizeof(msg.proc), 0) == -1) // 0 means IPC_NOWAIT
-            {
-                perror("msgsnd");
-                exit(1);
-            }
-            // printf("sent process %d\n", currentProcessIndex);
-            // 2. Increment the current process index.
-            currentProcessIndex++;
         }
         
     // TODO Generation Main Loop
@@ -180,4 +190,9 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     // TODO Clears all resources in case of interruption
+    printf("the process generator has stopped\n");
+    int msgq_del;
+    msgq_del = msgctl(msgid, IPC_RMID, 0);
+    destroyClk(true);
+    exit(0);
 }
