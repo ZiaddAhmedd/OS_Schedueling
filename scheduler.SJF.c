@@ -40,7 +40,6 @@ int main(int argc, char *argv[])
 
     // For Stats
 
-
     if (msgid == -1)
     {
         perror("Error in create");
