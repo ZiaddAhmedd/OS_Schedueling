@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
         x = getClk();
         sleep(1);
         x = getClk();
-       // printf("Current Time is %d\n", x);
+
         while (arrivals[currentProcessIndex] == x)
         {
 

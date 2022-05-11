@@ -15,3 +15,4 @@ At time  18  process 4 resumed arr 7 total 1 remian 1 wait 8
 At time  19  process 4 finished arr 7 total 1 remian 0 wait 8 TA 12 WTA 12.00 
 At time  19  process 3 resumed arr 5 total 4 remian 4 wait 8 
 At time  23  process 3 finished arr 5 total 4 remian 4 wait 8 TA 14 WTA 3.50 
+
