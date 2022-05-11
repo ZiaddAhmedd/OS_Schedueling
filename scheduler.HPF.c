@@ -1,35 +1,50 @@
-// #include "headers.h"
+#include "headers.h"
 
-// int main()
-// {
-//     struct Queue *HPF_Queue;
-//     struct Queue *HPF_Queue_Finished;
-//     HPF_Queue = createQueue();
-//     HPF_Queue_Finished = createQueue();
-//     int total_processes = 0;
-//     int rec_val = 0;
-//     int processRunning = 0;
-//     while (rec_val != -1) // meaning message queue is empty
-//     {
-//         struct msgbuffer msg;
-//         rec_val = msgrcv(msgid, (struct msgbuffer *)&msg, sizeof(msg.proc), 0, IPC_NOWAIT);
-        
+struct Queue Queue;
+key_t key_id;
+int rec_val, msgid;
+int main(int argc, char *argv[])
+{
 
-//         if (rec_val != -1) // there's something to recover from queue
-//         {
-//             // add process to queue
-//             struct process proc = msg.proc;
-//             printf("%d", proc.priority);
-//             enqueue(&HPF_Queue, proc);
-//             total_processes++;
-//         }
-//     }
+  Queue = createQueue();
+  initClk();
 
-//     if (processRunning == 0)
-//     {
-//         schedule_process();
-//         // here no need to check if scheduling failed due to empty queue since i just inserted now
-//         processRunning = 1;
-//     }
-//     return 0;
-// }
+  int rec_process = 0;
+  int processCount = atoi(argv[1]);
+  key_id = ftok("./clk.c", 'Z');            // create unique key
+  msgid = msgget(key_id, 0666 | IPC_CREAT); // create message queue and return id
+
+  if (msgid == -1)
+  {
+    perror("Error in create");
+    exit(-1);
+  }
+  printf("Message Queue ID = %d\n", msgid);
+
+  struct msgbuffer msg;
+  printf("%d\n", processCount);
+  while (isEmpty_Queue(&Queue) == 0 || rec_process < processCount)
+  {
+    do
+    {
+      /* receive all types of messages */
+      rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, IPC_NOWAIT); // shouldn't wait for msg
+      if (rec_val == -1 && isEmpty_Queue(&Queue) == 1)
+      {
+        rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, !IPC_NOWAIT);
+        // printf("process Recieved: %d  %d  %d  %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
+      }
+      if (rec_val != -1)
+      {
+        enqueue(&Queue, msg.proc);
+        process data = peek_Queue(&Queue);
+        printf("\nProcess recieved: %d %d %d %d\n", data.processId, data.arrivalTime, data.runTime, data.priority);
+      }
+
+      rec_process++;
+    } while (rec_val != -1);
+  }
+
+  msgctl(msgid, IPC_RMID, (struct msqid_ds *)0);
+  return 0;
+}

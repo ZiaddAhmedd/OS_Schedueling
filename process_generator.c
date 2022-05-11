@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     fscanf(ptr, "%*[^\n]\n");
 
     int buf;
-    int processCount =0;
+    int processCount = 0;
 
     // [done] traverse el file to know 3adad el processes
 
@@ -45,28 +45,23 @@ int main(int argc, char *argv[])
     {
         fscanf(ptr, "%d", &buf);
         ids[i] = buf;
-        
 
         fscanf(ptr, "%d", &buf);
         arrivals[i] = buf;
-       
 
         fscanf(ptr, "%d", &buf);
         runtimes[i] = buf;
-        
 
         fscanf(ptr, "%d", &buf);
         priorities[i] = buf;
-        
     }
     fclose(ptr);
 
     // 2. Read the chosen scheduling algorithm and its parameters, if there are any from the argument list.
     int algorithim_type, quantum;
-    printf("Enter algorithim type (1 for SJF, 2 for HPF, 3 for RR, 4 for MLFL):\n");
-    scanf("%d", &algorithim_type);
+    algorithim_type = atoi(argv[3]);
 
-    if ((algorithim_type == RR)||(algorithim_type==MLFL))
+    if ((algorithim_type == RR) || (algorithim_type == MLFL))
     {
         printf("Enter quantum: ");
         scanf("%d", &quantum);
@@ -79,14 +74,14 @@ int main(int argc, char *argv[])
     if (fork_pid_clock == 0)
     {
         // clk code
-        //clk.out
+        // clk.out
         char *argv[] = {"./clk.out", 0};
-        execve(argv[0], &argv[0], NULL); //mmkn nst3ml execve lw masht8ltsh!!
+        execve(argv[0], &argv[0], NULL); // mmkn nst3ml execve lw masht8ltsh!!
     }
 
     int fork_pid_schedule = fork();
 
-     if (fork_pid_schedule == 0)
+    if (fork_pid_schedule == 0)
     {
         if (algorithim_type == SJF)
         {
@@ -95,22 +90,25 @@ int main(int argc, char *argv[])
             // char *argv[] = {"./scheduler.SJF.out", 0};
             // execve(argv[0], &argv[0], NULL);
             char buffer1[20];
-            char buffer2[20];
-            sprintf(buffer1, "%d", processCount);     
+            sprintf(buffer1, "%d", processCount);
             argv[1] = buffer1;
-        // argv[1] = process_count ; needs to be fixeds
-        if (execv("./scheduler.SJF.out", argv) == -1)
-            perror("failed to execv");
+            // argv[1] = process_count ; needs to be fixeds
+            if (execv("./scheduler.SJF.out", argv) == -1)
+                perror("failed to execv");
         }
         else if (algorithim_type == HPF)
         {
             // HPF.out
-            char *argv[] = {"./scheduler.HPF.out", 0};
-            execve(argv[0], &argv[0], NULL);
+            char buffer1[20];
+            char buffer2[20];
+            sprintf(buffer1, "%d", processCount);
+            argv[1] = buffer1;
+            if (execv("./scheduler.HPF.out", argv) == -1)
+                perror("failed to execv");
         }
         else if (algorithim_type == RR)
         {
-            //RR
+            // RR
 
             char quantum_char[10];
             sprintf(quantum_char, "%d", quantum);
@@ -132,53 +130,64 @@ int main(int argc, char *argv[])
     /// char *args[] = {"./scheduler.c", NULL};
     // execv(args[0], args);
 
-        key_t key = ftok("./clk.c", 'Z'); 
-        msgid = msgget(key, IPC_CREAT | 0666);
-        struct msgbuffer msg;
-        if (msgid == -1)
+    key_t key = ftok("./clk.c", 'Z');
+    msgid = msgget(key, IPC_CREAT | 0666);
+    struct msgbuffer msg;
+    if (msgid == -1)
+    {
+        perror("msgget");
+        return 1;
+    }
+    // 4. Use this function after creating the clock process to initialize clock.
+    initClk();
+    int currentProcessIndex = 0;
+    int x;
+    while (currentProcessIndex < processCount)
+    {
+        x = getClk();
+        sleep(1);
+        x = getClk();
+        //printf("Current Time is %d\n", x);
+        while (arrivals[currentProcessIndex] == x)
         {
-            perror("msgget");
-            return 1;
-        }
-        // 4. Use this function after creating the clock process to initialize clock.
-        initClk();
-        int currentProcessIndex=0;
-        int x;
-        while (currentProcessIndex < processCount )
-        {
-            x = getClk();
-            sleep(1);
-            printf("Current Time is %d\n", x);
-            while(arrivals[currentProcessIndex]==x)
+
+            msg.mtype = 1;
+            msg.proc.processId = ids[currentProcessIndex];
+            msg.proc.arrivalTime = arrivals[currentProcessIndex];
+            msg.proc.runTime = runtimes[currentProcessIndex];
+            msg.proc.size = processCount;
+            if (algorithim_type == SJF)
             {
-                
-                msg.mtype = 1;
-                msg.proc.processId = ids[currentProcessIndex];
-                msg.proc.arrivalTime = arrivals[currentProcessIndex];
-                msg.proc.runTime = runtimes[currentProcessIndex];
-                msg.proc.size = processCount;
-                if (algorithim_type ==SJF)
-                {
-                    msg.proc.priority = runtimes[currentProcessIndex];
-                }else if (algorithim_type ==RR)
-                {
-                    msg.proc.priority = 20;
-                }else 
-                {
-                    msg.proc.priority = priorities[currentProcessIndex];
-                }
-                send_to_sch = msgsnd(msgid, &msg, 100, !IPC_NOWAIT);
-                if (send_to_sch == 0)
-                {
-                    printf("message successful at time %d \n", x);
-                    //printf ("%d  %d  %d  %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
-                }
-                // printf("sent process %d\n", currentProcessIndex);
-                // 2. Increment the current process index.
-                currentProcessIndex++;
+                msg.proc.priority = runtimes[currentProcessIndex];
             }
+            else if (algorithim_type == RR)
+            {
+                msg.proc.priority = 20;
+            }
+            else
+            {
+                msg.proc.priority = priorities[currentProcessIndex];
+            }
+            send_to_sch = msgsnd(msgid, &msg, sizeof(msg.proc), !IPC_NOWAIT);
+            if (send_to_sch == 0)
+            {
+                printf("message successful at time %d \n", x);
+                // printf ("%d  %d  %d  %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
+            }
+            // printf("sent process %d\n", currentProcessIndex);
+            // 2. Increment the current process index.
+            currentProcessIndex++;
         }
-        
+    }
+    int status;
+    fork_pid_schedule = wait(&status);
+    if (WIFEXITED(status))
+    {
+        int msgq_del;
+        msgq_del = msgctl(msgid, IPC_RMID, 0);
+        destroyClk(true);
+        exit(0);
+    }
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
@@ -190,7 +199,7 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     // TODO Clears all resources in case of interruption
-    printf("the process generator has stopped\n");
+    printf("The process generator has stopped\n");
     int msgq_del;
     msgq_del = msgctl(msgid, IPC_RMID, 0);
     destroyClk(true);
