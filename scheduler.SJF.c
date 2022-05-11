@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
         } while (rec_val != -1);
 
         nextTime = getClk();
-        if (nextTime >= time )
+        if (nextTime >= time)
         {
             int pid, status;
             data = peek_Queue(&Queue);
@@ -94,7 +94,7 @@ int main(int argc, char *argv[])
         }
     }
     float Utilization = ((float)allRunningTime / getClk()) * 100;
-    printf("%d\n",getClk());
+    printf("%d\n", getClk());
     float AvgWTA = 0;
     float AvgWaiting = 0;
     for (int i = 0; i < processCount; i++)
