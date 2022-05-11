@@ -63,7 +63,7 @@ int main(int argc, char *argv[])
             {
                 enqueue(&Queue, msg.proc);
                 process data = peek_Queue(&Queue);
-                // printf("\nProcess recieved: %d %d %d %d\n", data.processId, data.arrivalTime, data.runTime, data.priority);
+                
             }
 
             recProcess++;
@@ -140,6 +140,5 @@ void childHandler(int signum)
     TA = data.finishTime - data.arrivalTime;
     WTA = (float)TA / (float)data.runTime;
     fprintf(fptr, "At time %d process %d started arr %d total %d remain %d wait %d \n", data.startTime, data.processId, data.arrivalTime, data.runTime, data.runTime, data.waitingTime);
-
     enqueue(&FinishedQueue, data);
 }
