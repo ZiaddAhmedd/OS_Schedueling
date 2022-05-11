@@ -156,6 +156,7 @@ int main(int argc, char *argv[])
             msg.proc.processId = ids[currentProcessIndex];
             msg.proc.arrivalTime = arrivals[currentProcessIndex];
             msg.proc.runTime = runtimes[currentProcessIndex];
+            msg.proc.executionTime = runtimes[currentProcessIndex];
             msg.proc.size = processCount;
             if (algorithim_type == SJF)
             {

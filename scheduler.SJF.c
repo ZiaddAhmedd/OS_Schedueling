@@ -87,9 +87,7 @@ int main(int argc, char *argv[])
                 CurrentProcess->state = RUNNING;
                 CurrentProcess->startTime = getClk();
                 CurrentProcess->waitingTime = getClk() - CurrentProcess->arrivalTime;
-                
                 pid = fork();
-
                 if (pid == 0)
                 {
                     
