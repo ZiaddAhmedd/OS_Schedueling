@@ -26,8 +26,8 @@ typedef short bool;
 #define MLFL 4
 //=================================
 typedef short ALGORITHIM_TYPE;
-#define PAUSED 3
-#define TERMINATED 2
+#define PREEMPTED 3
+#define FINISHED 2
 #define RUNNING 1
 #define WAITING 0
 //=================================

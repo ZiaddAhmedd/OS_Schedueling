@@ -7,9 +7,10 @@ typedef struct process
     int size;
 
     int state;
-    int waitingTime;
+    int waitingTime; 
     int executionTime; //mn3rfsh lesa este3malo ehtmal utilization
     int remainingTime;
+    int contextSwitchTime; 
     int finishTime;
     int startTime;
     //int mem_start_position;
@@ -31,6 +32,7 @@ typedef struct process
     p.state = 0;
     p.waitingTime = 0;
     p.executionTime = 0;
+    p.contextSwitchTime = 0;
     p.finishTime = -1;
     p.startTime = -1;
     //p.mem_start_position = -1;
@@ -53,6 +55,7 @@ void initializeProcessPointer(
     p->state = 0;
     p->waitingTime = 0;
     p->executionTime = 0;
+    p->contextSwitchTime = 0;
     p->finishTime = -1;
     p->startTime = -1;
     //p->mem_start_position = -1;

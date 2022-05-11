@@ -61,11 +61,7 @@ int main(int argc, char *argv[])
     int algorithim_type, quantum;
     algorithim_type = atoi(argv[3]);
 
-    if ((algorithim_type == RR) || (algorithim_type == MLFL))
-    {
-        printf("Enter quantum: ");
-        scanf("%d", &quantum);
-    }
+    quantum = atoi(argv[5]);
 
     // 3. Initiate and create the scheduler and clock processes.
 
@@ -110,11 +106,16 @@ int main(int argc, char *argv[])
         {
             // RR
 
-            char quantum_char[10];
-            sprintf(quantum_char, "%d", quantum);
+            char buffer1[20];
+            char buffer2[20];
+            sprintf(buffer1, "%d", processCount);
+            sprintf(buffer2, "%d", quantum);
+            argv[1] = buffer1;
+            argv[2] = buffer2;
 
-            char *argv[] = {"./scheduler.RR.out", quantum_char, 0};
-            execve(argv[0], &argv[0], NULL);
+            // argv[1] = process_count ; needs to be fixeds
+            if (execv("./scheduler.RR.out", argv) == -1)
+                perror("failed to execv");
         }
         else if (algorithim_type == MLFL)
         {
@@ -147,7 +148,7 @@ int main(int argc, char *argv[])
         x = getClk();
         sleep(1);
         x = getClk();
-        printf("Current Time is %d\n", x);
+       // printf("Current Time is %d\n", x);
         while (arrivals[currentProcessIndex] == x)
         {
 
@@ -171,8 +172,8 @@ int main(int argc, char *argv[])
             send_to_sch = msgsnd(msgid, &msg, sizeof(msg.proc), !IPC_NOWAIT);
             if (send_to_sch == 0)
             {
-                printf("message successful at time %d \n", x);
-                // printf ("%d  %d  %d  %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
+                //printf("message successful at time %d \n", x);
+               // printf ("sent: %d %d %d %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
             }
             // printf("sent process %d\n", currentProcessIndex);
             // 2. Increment the current process index.
