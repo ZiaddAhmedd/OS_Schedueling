@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 
     fptr = fopen("Schedular.log", "w"); // For Files
     fprintf(fptr, "#At time x process y state arr w total z remain y wait k \n");
+    fflush(fptr);
 
     // For Stats
 
@@ -56,7 +57,7 @@ int main(int argc, char *argv[])
     }
 
     struct msgbuffer msg;
-    while (isEmpty_Queue(&Queue) == 0 || finishedProcess != processCount)
+    while ( 1)
     {
         do
         {
@@ -79,7 +80,7 @@ int main(int argc, char *argv[])
                
               //  printf("Process recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
             }
-            printf("CurrentTime: %d\n",getClk());
+            //printf("CurrentTime: %d\n",getClk());
 
             
         } while (rec_val != -1);
@@ -98,12 +99,12 @@ int main(int argc, char *argv[])
                 
                 dequeue(&Queue); // get the process and dequeue it
                 CurrentRunning = &data;
-                printf("%d\n" ,CurrentRunning->state);
+                
+                //printf("%d\n" ,CurrentRunning->state);
             }
-
+        
             char buffer1[5];
             sprintf(buffer1, "%d", CurrentRunning->runTime); // pass the remianing time
-            
             if (CurrentRunning->state == WAITING)
             {
                 CurrentRunning->startTime = getClk(); // start time of the process added to the node
@@ -119,6 +120,7 @@ int main(int argc, char *argv[])
                     CurrentRunning->waitingTime = CurrentRunning->startTime - CurrentRunning->arrivalTime; // get waiting time
                     // fptr = fopen("schedular.log", "a+");
                     fprintf(fptr, "At time  %d  process %d started arr %d total %d remian %d wait %d \n", getClk(),CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
+                    fflush(fptr);
                     // fclose(fptr);
                     CurrentRunning->PID = pid;
                 }
@@ -129,53 +131,53 @@ int main(int argc, char *argv[])
                 CurrentRunning->waitingTime = getClk() - CurrentRunning->contextSwitchTime + CurrentRunning->waitingTime;
                 // fptr = fopen("schedular.log", "a+");
                 fprintf(fptr, "At time  %d  process %d resumed arr %d total %d remian %d wait %d \n", getClk(),CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
+                fflush(fptr);
                 // fclose(fptr);
-                //CurrentRunning->startTime=getClk();
+                CurrentRunning->startTime=getClk();
                 CurrentRunning->state = RUNNING;
+                printqueue(&Queue);
                 kill(CurrentRunning->PID , SIGCONT); // continue the process
-                printf("exectime: %d startTime: %d waitingTime %d\n",CurrentRunning->executionTime,CurrentRunning->startTime,CurrentRunning->waitingTime);
+                printf("exectime: %d startTime: %d waitingTime %d RunnungTime %d\n",CurrentRunning->executionTime,CurrentRunning->startTime,CurrentRunning->waitingTime,CurrentRunning->runTime);
             }
-            if(isEmpty_Queue(&Queue)==0)
-            {
               //printf("ana process 3\n");
               //printf("Clock is %d, Expected to finish is %d \n",getClk(),(CurrentRunning->startTime + CurrentRunning->executionTime + CurrentRunning->waitingTime));
-              if (CurrentRunning->priority > peek_Queue(&Queue).priority)
+              if (isEmpty_Queue(&Queue)==0 && CurrentRunning->priority > peek_Queue(&Queue).priority)
               { 
                   kill(CurrentRunning->PID, SIGSTOP); // stop the process after the quantum
                   CurrentRunning->contextSwitchTime= getClk();
-                  CurrentRunning->runTime =CurrentRunning->executionTime - CurrentRunning->contextSwitchTime + CurrentRunning->waitingTime +1;  // decrease the remaing time by quantum
+                  CurrentRunning->runTime -= (getClk() - CurrentRunning->startTime);  // decrease the remaing time by quantum
                   // fptr = fopen("schedular.log", "a+");
                   fprintf(fptr, "At time  %d  process %d stopped arr %d total %d remain %d wait %d \n", CurrentRunning->contextSwitchTime, CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
+                  fflush(fptr);
                   // fclose(fptr);
                   printf("STOP\n");
                   CurrentRunning->state = PREEMPTED;
+
                   
                   enqueue(&Queue, *CurrentRunning);
                   CurrentRunning = NULL;
                   goto Here;
-                  // printqueue(&Queue);
                   
               }
-              else if (getClk()==(CurrentRunning->startTime + CurrentRunning->executionTime + CurrentRunning->waitingTime))
+             if (getClk()>=(CurrentRunning->startTime +CurrentRunning->runTime))
                 {
 
-                    CurrentRunning->runTime = 0; // decrease the remaing time by quantum
-                    CurrentRunning->state = FINISHED;
-                    TA = getClk() - CurrentRunning->arrivalTime;
-                    WTA = (float)TA / CurrentRunning->executionTime;
-                    CurrentRunning->finishTime = getClk();
+                    // CurrentRunning->runTime = 0; // decrease the remaing time by quantum
+                    // CurrentRunning->state = FINISHED;
+                    // TA = getClk() - CurrentRunning->arrivalTime;
+                    // WTA = (float)TA / CurrentRunning->executionTime;
+                    // CurrentRunning->finishTime = getClk();
                     // fptr = fopen("schedular.log", "a+");
                     fprintf(fptr, "At time  %d  process %d finished arr %d total %d remian %d wait %d TA %d WTA %.2f \n", getClk(),CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime, TA, WTA);
+                    fflush(fptr);
                     // fclose(fptr);
-                    FinishedProcesses++;
-                    TotalRunnung += CurrentRunning->executionTime;
-                    // printqueue(&Queue);
-                    enqueue(&FinishedQueue,*CurrentRunning );
+                    // FinishedProcesses++;
+                    // TotalRunnung += CurrentRunning->executionTime;
+                    // //enqueue(&FinishedQueue,*CurrentRunning );
+
                     CurrentRunning =NULL;
                     printf("FINISHED\n");
                 }
-          
-            }
         }
     }
     destroyClk(true);
