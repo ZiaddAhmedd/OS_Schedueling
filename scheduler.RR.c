@@ -7,6 +7,7 @@ void schedulerHandler(int signum);
 
 struct Queue Queue;
 struct Queue FinishedQueue;
+struct Queue RunningQueue;
 process *CurrentRunning = NULL;
 
 // int time, nexttime;
@@ -55,13 +56,14 @@ int main(int argc, char *argv[])
     }
 
     struct msgbuffer msg;
-    while (isEmpty_Queue(&Queue) == 0 || recProcess < processCount)
+    while (FinishedProcesses != processCount || recProcess < processCount)
     {
         do
         {
+           
             /* receive all types of messages */
             rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, IPC_NOWAIT); // shouldn't wait for msg
-            if (rec_val == -1 && isEmpty_Queue(&Queue) == 1)
+            if (rec_val == -1 && isEmpty_Queue(&Queue) == 1 && isEmpty_Queue(&RunningQueue)==1 )
             {
                 printf("YARAAABBB\n");
                 rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, !IPC_NOWAIT);
@@ -76,6 +78,7 @@ int main(int argc, char *argv[])
                 recProcess++;
                 printf("process: %d recieved at: %d\n", msg.proc.processId, getClk());
 
+
                 //  printf("Process recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
             }
 
@@ -88,18 +91,15 @@ int main(int argc, char *argv[])
             time = getClk();
             int pid, status;
 
-            // if ( data.state != FINISHED && data.executionTime > data.runTime)
-            //     {
-            //         enqueue(&Queue, data);
-            //     }
-
             if (CurrentRunning == NULL)
             {
+                 printf("Time is: %d\n",getClk());
                 data = peek_Queue(&Queue);
-                printf("I'm process %d\n", data.processId);
+                
                 dequeue(&Queue); // get the process and dequeue it
                 CurrentRunning = &data;
-                printf("%d\n", CurrentRunning->state);
+                printf("I'm process %d \n", CurrentRunning->processId);
+                printf("State is %d, remaining time is %d \n", CurrentRunning->state, CurrentRunning->runTime);
             }
 
             char buffer1[5];
@@ -110,6 +110,7 @@ int main(int argc, char *argv[])
                 CurrentRunning->startTime = getClk(); // start time of the process added to the node
                 int pid = fork();                     // fork the process
                 CurrentRunning->state = RUNNING;
+                enqueue(&RunningQueue,*CurrentRunning);
                 if (pid == 0)
                 {
                     char *ar[] = {"./process.out", buffer1, NULL, 0};
@@ -133,7 +134,9 @@ int main(int argc, char *argv[])
                 fprintf(fptr, "At time  %d  process %d resumed arr %d total %d remian %d wait %d \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
                 // fclose(fptr);
                 CurrentRunning->startTime = getClk();
+                printf("Start time is %d\n",CurrentRunning->startTime);
                 CurrentRunning->state = RUNNING;
+                enqueue(&RunningQueue,*CurrentRunning);
                 kill(arrPids[CurrentRunning->processId - 1], SIGCONT); // continue the process
             }
 
@@ -141,13 +144,13 @@ int main(int argc, char *argv[])
             {
                 // printf("process %d bigger qunatum\n", p->process_id);
                 // printf(" running time process %d", p->running_time);
-                //                     printf("process %d resumed\n", data.processId);
-
-                if (FinishedProcesses == processCount - 1)
+                // printf("process %d resumed\n", data.processId);
+                
+                if (FinishedProcesses == processCount)
                 {
                     // printf("process id %d is done", p->process_id);
-
                     CurrentRunning->state = FINISHED;
+                    dequeue(&RunningQueue);
                     TA = getClk() - CurrentRunning->arrivalTime + CurrentRunning->runTime-1;
                     WTA = (float)TA / CurrentRunning->executionTime;
 
@@ -160,8 +163,15 @@ int main(int argc, char *argv[])
                     FinishedProcesses++;
 
                     printf("3omdaaa\n");
-                    enqueue(&FinishedQueue, *CurrentRunning);
-                    CurrentRunning = NULL;
+                    if(!CurrentRunning)
+                    {
+                        enqueue(&FinishedQueue, *CurrentRunning);
+                    }
+                    if (FinishedProcesses!=processCount)
+                    {
+                        
+                        CurrentRunning = NULL;
+                    }
                 }
                 else if (getClk() - CurrentRunning->startTime == quantum)
                 {
@@ -173,22 +183,22 @@ int main(int argc, char *argv[])
                     // fclose(fptr);
                     printf("STOP\n");
                     CurrentRunning->state = PREEMPTED;
+                    dequeue(&RunningQueue);
 
                     enqueue(&Queue, *CurrentRunning);
                     CurrentRunning = NULL;
-                    // printqueue(&Queue);
+                    printqueue(&Queue);
                 }
             }
-            else if (CurrentRunning->runTime <= quantum && CurrentRunning->runTime != 0)
+            else if (CurrentRunning->runTime <= quantum )
             {
-                // printf("process %d smaller qunatum\n", p->process_id);
-                // printf(" running time process %d", p->running_time);
-                // printf("process id %d is done", p->process_id);
-                // sleep(data.runTime);
-                if (getClk() - CurrentRunning->startTime == CurrentRunning->runTime)
+                
+                if ((getClk() - CurrentRunning->startTime) == CurrentRunning->runTime)
                 {
+                    printf("process %d finished at %d\n",CurrentRunning->processId,getClk());
                     CurrentRunning->runTime = 0; // decrease the remaing time by quantum
                     CurrentRunning->state = FINISHED;
+                    dequeue(&RunningQueue);
                     TA = getClk() - CurrentRunning->arrivalTime;
                     WTA = (float)TA / CurrentRunning->executionTime;
                     CurrentRunning->finishTime = getClk();
@@ -196,16 +206,22 @@ int main(int argc, char *argv[])
                     fprintf(fptr, "At time  %d  process %d finished arr %d total %d remian %d wait %d TA %d WTA %.2f \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime, TA, WTA);
                     // fclose(fptr);
                     FinishedProcesses++;
-
                     // printqueue(&Queue);
-                    enqueue(&FinishedQueue, *CurrentRunning);
-                    CurrentRunning = NULL;
+                    if(!CurrentRunning)
+                    {
+                        enqueue(&FinishedQueue, *CurrentRunning);
+                    }
+                    if (FinishedProcesses!=processCount)
+                    {
+                        
+                        CurrentRunning = NULL;
+                    }
+                    
                 }
             }
         }
     }
 
-    printf("%d\n", getClk());
     float AvgWTA = 0;
     float AvgWaiting = 0;
     for (int i = 0; i < processCount; i++)
@@ -216,7 +232,6 @@ int main(int argc, char *argv[])
         
         AvgWTA += (float)(done.finishTime - done.arrivalTime) / done.executionTime;
         AvgWaiting += done.waitingTime;
-        printf("%d\n", done.waitingTime);
     }
     float Utilization = ((float)TotalRunning / (totalProcessor)) * 100;
     AvgWTA = AvgWTA / (float)processCount;
