@@ -1,4 +1,5 @@
 #include "headers.h"
+#include <time.h>
 
 int remainingTime;
 

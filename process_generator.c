@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     int arrivals[processCount];
     int runtimes[processCount];
     int priorities[processCount];
-
+    int memories[processCount];
     for (int i = 0; i < processCount; i++)
     {
         fscanf(ptr, "%d", &buf);
@@ -54,18 +54,17 @@ int main(int argc, char *argv[])
 
         fscanf(ptr, "%d", &buf);
         priorities[i] = buf;
+
+        fscanf(ptr, "%d", &buf);
+        memories[i] = buf;
     }
     fclose(ptr);
 
     // 2. Read the chosen scheduling algorithm and its parameters, if there are any from the argument list.
-    int algorithim_type, quantum;
-    algorithim_type = atoi(argv[3]);
+    int algorithm_type, quantum;
+    algorithm_type = atoi(argv[3]);
 
-    if ((algorithim_type == RR) || (algorithim_type == MLFL))
-    {
-        printf("Enter quantum: ");
-        scanf("%d", &quantum);
-    }
+    quantum = atoi(argv[5]);
 
     // 3. Initiate and create the scheduler and clock processes.
 
@@ -83,7 +82,7 @@ int main(int argc, char *argv[])
 
     if (fork_pid_schedule == 0)
     {
-        if (algorithim_type == SJF)
+        if (algorithm_type == SJF)
         {
             // SJF.out
 
@@ -96,7 +95,7 @@ int main(int argc, char *argv[])
             if (execv("./scheduler.SJF.out", argv) == -1)
                 perror("failed to execv");
         }
-        else if (algorithim_type == HPF)
+        else if (algorithm_type == HPF)
         {
             // HPF.out
             char buffer1[20];
@@ -106,17 +105,22 @@ int main(int argc, char *argv[])
             if (execv("./scheduler.HPF.out", argv) == -1)
                 perror("failed to execv");
         }
-        else if (algorithim_type == RR)
+        else if (algorithm_type == RR)
         {
             // RR
 
-            char quantum_char[10];
-            sprintf(quantum_char, "%d", quantum);
+            char buffer1[20];
+            char buffer2[20];
+            sprintf(buffer1, "%d", processCount);
+            sprintf(buffer2, "%d", quantum);
+            argv[1] = buffer1;
+            argv[2] = buffer2;
 
-            char *argv[] = {"./scheduler.RR.out", quantum_char, 0};
-            execve(argv[0], &argv[0], NULL);
+            // argv[1] = process_count ; needs to be fixeds
+            if (execv("./scheduler.RR.out", argv) == -1)
+                perror("failed to execv");
         }
-        else if (algorithim_type == MLFL)
+        else if (algorithm_type == MLFL)
         {
             char quantum_char[10];
             sprintf(quantum_char, "%d", quantum);
@@ -147,7 +151,7 @@ int main(int argc, char *argv[])
         x = getClk();
         sleep(1);
         x = getClk();
-        printf("Current Time is %d\n", x);
+        printf("Clock is %d\n",x);
         while (arrivals[currentProcessIndex] == x)
         {
 
@@ -155,12 +159,14 @@ int main(int argc, char *argv[])
             msg.proc.processId = ids[currentProcessIndex];
             msg.proc.arrivalTime = arrivals[currentProcessIndex];
             msg.proc.runTime = runtimes[currentProcessIndex];
+            msg.proc.executionTime = runtimes[currentProcessIndex];
             msg.proc.size = processCount;
-            if (algorithim_type == SJF)
+            msg.proc.memory=memories[currentProcessIndex];
+            if (algorithm_type == SJF)
             {
                 msg.proc.priority = runtimes[currentProcessIndex];
             }
-            else if (algorithim_type == RR)
+            else if (algorithm_type == RR)
             {
                 msg.proc.priority = 20;
             }
@@ -171,8 +177,8 @@ int main(int argc, char *argv[])
             send_to_sch = msgsnd(msgid, &msg, sizeof(msg.proc), !IPC_NOWAIT);
             if (send_to_sch == 0)
             {
-                printf("message successful at time %d \n", x);
-                // printf ("%d  %d  %d  %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
+                //printf("message successful at time %d \n", x);
+               // printf ("sent: %d %d %d %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
             }
             // printf("sent process %d\n", currentProcessIndex);
             // 2. Increment the current process index.

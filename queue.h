@@ -82,8 +82,7 @@ void dequeue(struct Queue *q)
   q->Head = q->Head->next;
 
   // If front becomes NULL, then change rear also as NULL
-
-  free(temp);
+  
 }
 
 // struct Node *dequeue(struct Queue *q)

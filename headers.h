@@ -15,19 +15,20 @@
 #include "process_data.h" //msh mot2den hatsht8l wla laa,lw laa include in queue.h
 #include "CircularQueue.h"
 #include "queue.h"
+#include "mem_mngr.h"
 
 typedef short bool;
 #define true 1
 #define false 0
-// Definitions for algorithims
+// Definitions for algorithms
 #define SJF 1
 #define HPF 2
 #define RR 3
 #define MLFL 4
 //=================================
 typedef short ALGORITHIM_TYPE;
-#define PAUSED 3
-#define TERMINATED 2
+#define PREEMPTED 3
+#define FINISHED 2
 #define RUNNING 1
 #define WAITING 0
 //=================================

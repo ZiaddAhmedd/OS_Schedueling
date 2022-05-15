@@ -6,10 +6,11 @@ void childHandler(int signum);
 ////////////
 
 struct Queue Queue;
-struct Queue FinishedQueue;
+// struct Queue RunningQueue;
+// struct Queue FinishedQueue;
 
 // int time, nexttime;
-
+process *CurrentProcess = NULL;
 int TA;
 float WTA;
 FILE *fptr;
@@ -17,18 +18,22 @@ process data;
 int allRunningTime = 0;
 int recProcess = 0;
 int finishedProcess = 0;
+int processCount = 0;
+int msgid;
+float AvgWTA = 0;
+float AvgWaiting = 0;
 int main(int argc, char *argv[])
 {
     initClk();
     signal(SIGINT, schedulerHandler);
-    signal(SIGCHLD,childHandler);
+    signal(SIGCHLD, childHandler);
     Queue = createQueue();
-    FinishedQueue = createQueue();
-    
+    // RunningQueue = createQueue();
+    // FinishedQueue = createQueue();
 
-    int rec_val, msgid;
+    int rec_val;
     key_t key_id;
-    int processCount = atoi(argv[1]);
+    processCount = atoi(argv[1]);
     key_id = ftok("./clk.c", 'Z');            // create unique key
     msgid = msgget(key_id, 0666 | IPC_CREAT); // create message queue and return id
 
@@ -49,7 +54,7 @@ int main(int argc, char *argv[])
 
     struct msgbuffer msg;
     printf("%d\n", processCount);
-    while (isEmpty_Queue(&Queue) == 0 || recProcess < processCount)
+    while (finishedProcess != processCount)
     {
         do
         {
@@ -58,42 +63,68 @@ int main(int argc, char *argv[])
             if (rec_val == -1 && isEmpty_Queue(&Queue) == 1)
             {
                 rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, !IPC_NOWAIT);
-                // printf("process Recieved: %d  %d  %d  %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
             }
             if (rec_val != -1)
             {
                 enqueue(&Queue, msg.proc);
-                process data = peek_Queue(&Queue);
-                //printf("\nProcess recieved: %d %d %d %d\n", data.processId, data.arrivalTime, data.runTime, data.priority);
+
+                // printf("process %d Recieved %d\n", msg.proc.processId, getClk());
+
+                // printf("\nProcess recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
             }
 
-            recProcess++;
         } while (rec_val != -1);
 
         nextTime = getClk();
-        if (nextTime > time)
+        if (nextTime >= time)
         {
             int pid, status;
-            data = peek_Queue(&Queue);
-            dequeue(&Queue);
-            pid = fork();
-            data.startTime = getClk();
-            data.waitingTime = getClk() - data.arrivalTime;
-            if (pid == 0)
+
+            if (CurrentProcess == NULL && isEmpty_Queue(&Queue) == 0)
             {
-                char buffer[20];
-                char *sendToProcess[2];
-                sprintf(buffer, "%d", data.runTime);
-                char *argv[] = {"./process.out", buffer, NULL, 0};
-                execve(argv[0], &argv[0], NULL);
-            }
-            pid = wait(&status);
-            if (WIFEXITED(status))
-            {
-                fprintf(fptr, "At time %d process %d finished arr %d total %d remain %d wait %d TA %d WTA %.2f \n", data.finishTime, data.processId, data.arrivalTime, data.runTime, 0, data.waitingTime, TA, WTA);
+                data = peek_Queue(&Queue);
+                CurrentProcess = &data;
+                printf("I am process %d\n", CurrentProcess->processId);
+                CurrentProcess->state = RUNNING;
+                dequeue(&Queue);
+                printf("\nProcess Running: %d %d %d %d\n", CurrentProcess->processId, CurrentProcess->arrivalTime, CurrentProcess->runTime, CurrentProcess->priority);
+                CurrentProcess->startTime = getClk();
+                CurrentProcess->waitingTime = getClk() - CurrentProcess->arrivalTime;
+                pid = fork();
+                if (pid == 0)
+                {
+
+                    char buffer[20];
+                    char *sendToProcess[2];
+                    sprintf(buffer, "%d", CurrentProcess->runTime);
+                    char *argv[] = {"./process.out", buffer, NULL, 0};
+                    execve(argv[0], &argv[0], NULL);
+                }
+                else
+                {
+                    fprintf(fptr, "At time %d process %d started arr %d total %d remain %d wait %d \n", CurrentProcess->startTime, CurrentProcess->processId, CurrentProcess->arrivalTime, CurrentProcess->runTime, CurrentProcess->runTime, CurrentProcess->waitingTime);
+                }
             }
         }
     }
+    float Utilization = ((float)allRunningTime / (getClk())) * 100;
+
+    AvgWTA = AvgWTA / (float)processCount;
+    AvgWaiting = AvgWaiting / (float)processCount;
+    FILE *perfPtr;
+    perfPtr = fopen("Scheduler.perf", "w");
+    if (!perfPtr)
+    {
+        printf("Error in opening file\n");
+    }
+    else
+    {
+        fprintf(perfPtr, "CPU utilization = %0.2f %% \n", Utilization);
+        fprintf(perfPtr, "Avg WTA = %0.2f\n", AvgWTA);
+        fprintf(perfPtr, "Avg Waiting = %0.2f\n", AvgWaiting);
+    }
+    fclose(perfPtr);
+
     destroyClk(true);
     msgctl(msgid, IPC_RMID, (struct msqid_ds *)0);
     return 0;
@@ -102,18 +133,24 @@ int main(int argc, char *argv[])
 void schedulerHandler(int signum)
 {
     printf("The Scheduler has stopped\n");
+    msgctl(msgid, IPC_RMID, NULL);
     destroyClk(true);
     exit(0);
 }
 
 void childHandler(int signum)
 {
+    printf("clk: %d start: %d run: %d\n", getClk(), CurrentProcess->startTime, CurrentProcess->runTime);
+    // printf("\nProcess finished: %d %d %d %d\n", CurrentProcess->processId, CurrentProcess->arrivalTime, CurrentProcess->runTime, CurrentProcess->priority);
     finishedProcess++;
-    allRunningTime += getClk() - data.startTime;
-    data.finishTime = getClk();
-    TA = data.finishTime - data.arrivalTime;
-    WTA = (float)TA / (float)data.runTime;
-    fprintf(fptr, "At time %d process %d started arr %d total %d remain %d wait %d \n", data.startTime, data.processId, data.arrivalTime, data.runTime, data.runTime, data.waitingTime);
-    
-    enqueue(&FinishedQueue, data);
+    allRunningTime += getClk() - CurrentProcess->startTime;
+    CurrentProcess->finishTime = getClk();
+    TA = CurrentProcess->finishTime - CurrentProcess->arrivalTime;
+    WTA = (float)TA / (float)CurrentProcess->runTime;
+    AvgWaiting += CurrentProcess->startTime - CurrentProcess->arrivalTime;
+    AvgWTA += WTA;
+    CurrentProcess->state = FINISHED;
+    fprintf(fptr, "At time %d process %d finished arr %d total %d remain %d wait %d TA %d WTA %.2f \n", CurrentProcess->finishTime, CurrentProcess->processId, CurrentProcess->arrivalTime, CurrentProcess->runTime, 0, CurrentProcess->waitingTime, TA, WTA);
+    CurrentProcess = NULL;
+    signal(SIGCHLD, childHandler);
 }
