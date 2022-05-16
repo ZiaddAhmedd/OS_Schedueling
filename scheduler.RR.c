@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
             rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, IPC_NOWAIT); // shouldn't wait for msg
             if (rec_val == -1 && isEmpty_Queue(&Queue) == 1 && isEmpty_Queue(&RunningQueue) == 1)
             {
+                printf("YARAAABBB\n");
                 rec_val = msgrcv(msgid, &msg, sizeof(msg.proc), 0, !IPC_NOWAIT);
 
                 // printf("process Recieved: %d  %d  %d  %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
@@ -163,7 +164,6 @@ int main(int argc, char *argv[])
                 // printf("process %d bigger qunatum\n", p->process_id);
                 // printf(" running time process %d", p->running_time);
                 // printf("process %d resumed\n", data.processId);
-
                 if (FinishedProcesses == processCount)
                 {
                     // printf("process id %d is done", p->process_id);

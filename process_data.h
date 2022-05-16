@@ -6,11 +6,13 @@ typedef struct process
     int arrivalTime;
     int size;
     int PID;
+
     int state;
     int waitingTime;
     int executionTime; // mn3rfsh lesa este3malo ehtmal utilization
     int remainingTime;
     int contextSwitchTime;
+
     int finishTime;
     int startTime;
     int memory;

@@ -15,7 +15,7 @@ int TA;
 float WTA;
 FILE *fptr;
 process data;
-int allRunningTime = 0;
+int allRunningTime = 1;
 int recProcess = 0;
 int finishedProcess = 0;
 int processCount = 0;
@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
                 pid = fork();
                 if (pid == 0)
                 {
-
                     char buffer[20];
                     char *sendToProcess[2];
                     sprintf(buffer, "%d", CurrentProcess->runTime);
