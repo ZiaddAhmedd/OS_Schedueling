@@ -6,25 +6,26 @@ void childHandler(int signum);
 ////////////
 
 struct Queue Queue;
-// struct Queue RunningQueue;
-// struct Queue FinishedQueue;
-
-// int time, nexttime;
+struct memTree *MemoryTree;
+int MemoryStart;
 process *CurrentProcess = NULL;
 int TA;
 float WTA;
 FILE *fptr;
+FILE *memfptr;
 process data;
-int allRunningTime = 1;
+int allRunningTime = 0;
 int recProcess = 0;
 int finishedProcess = 0;
 int processCount = 0;
 int msgid;
 float AvgWTA = 0;
 float AvgWaiting = 0;
+
 int main(int argc, char *argv[])
 {
     initClk();
+    MemoryTree = create_memTree();
     signal(SIGINT, schedulerHandler);
     signal(SIGCHLD, childHandler);
     Queue = createQueue();
@@ -40,8 +41,10 @@ int main(int argc, char *argv[])
     int time, nextTime;
     time = getClk();
 
-    fptr = fopen("Schedular.log", "w"); // For Files
+    fptr = fopen("Scheduler_SJF.log", "w"); // For Files
+    memfptr = fopen("Memory_SJF.log", "w"); // For Files
     fprintf(fptr, "#At time x process y state arr w total z remain y wait k \n");
+    fprintf(memfptr, "#At time x allocated y bytes for process z from i to j \n");
 
     // For Stats
 
@@ -66,13 +69,12 @@ int main(int argc, char *argv[])
             }
             if (rec_val != -1)
             {
+                MemoryStart = allocateProcess(MemoryTree, msg.proc.memory, msg.proc.processId);
+                msg.proc.mem_start = MemoryStart;
                 enqueue(&Queue, msg.proc);
-
-                // printf("process %d Recieved %d\n", msg.proc.processId, getClk());
-
-                // printf("\nProcess recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
+                int total_size = pow(2, ceil(log2(msg.proc.memory)));
+                fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, MemoryStart, MemoryStart + total_size);
             }
-
         } while (rec_val != -1);
 
         nextTime = getClk();
@@ -111,7 +113,7 @@ int main(int argc, char *argv[])
     AvgWTA = AvgWTA / (float)processCount;
     AvgWaiting = AvgWaiting / (float)processCount;
     FILE *perfPtr;
-    perfPtr = fopen("Scheduler.perf", "w");
+    perfPtr = fopen("Scheduler_SJF.perf", "w");
     if (!perfPtr)
     {
         printf("Error in opening file\n");
@@ -123,7 +125,7 @@ int main(int argc, char *argv[])
         fprintf(perfPtr, "Avg Waiting = %0.2f\n", AvgWaiting);
     }
     fclose(perfPtr);
-
+    fclose(memfptr);
     destroyClk(true);
     msgctl(msgid, IPC_RMID, (struct msqid_ds *)0);
     return 0;
@@ -150,6 +152,11 @@ void childHandler(int signum)
     AvgWTA += WTA;
     CurrentProcess->state = FINISHED;
     fprintf(fptr, "At time %d process %d finished arr %d total %d remain %d wait %d TA %d WTA %.2f \n", CurrentProcess->finishTime, CurrentProcess->processId, CurrentProcess->arrivalTime, CurrentProcess->runTime, 0, CurrentProcess->waitingTime, TA, WTA);
+
+    deallocateProcess(MemoryTree, CurrentProcess->processId);
+    int total_size = pow(2, ceil(log2(CurrentProcess->memory)));
+    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentProcess->memory, CurrentProcess->processId, CurrentProcess->mem_start, CurrentProcess->mem_start + total_size);
+
     CurrentProcess = NULL;
     signal(SIGCHLD, childHandler);
 }
