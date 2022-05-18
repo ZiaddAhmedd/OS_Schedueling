@@ -8,12 +8,12 @@ void schedulerHandler(int signum);
 struct Queue Queue;
 struct Queue FinishedQueue;
 struct Queue RunningQueue;
-struct Queue waiting_for_mem;
-struct memStruct Memory;
+struct memTree *MemoryTree;
 process *CurrentRunning = NULL;
 
 // int time, nexttime;
 int TotailWaiting = 0;
+int MemoryStart;
 int TA;
 int totalProcessor = 0;
 int quantum;
@@ -36,10 +36,9 @@ int arrPids[100];
 int main(int argc, char *argv[])
 {
     initClk();
-    initMemMngr();
+    MemoryTree = create_memTree();
     signal(SIGINT, schedulerHandler);
     Queue = createQueue();
-    waiting_for_mem=createQueue();
     FinishedQueue = createQueue();
     int FinishedProcesses = 0;
 
@@ -85,22 +84,15 @@ int main(int argc, char *argv[])
             if (rec_val != -1)
             {
 
-                Memory = allocateProcess(msg.proc.memory, msg.proc.processId);
-                if (Memory.id == -1)
-                {
-                    enqueue(&waiting_for_mem, msg.proc);
-                }
-                else
-                {
-                    enqueue(&Queue, msg.proc);
-                    process dataa = peek_Queue(&Queue);
-                    TotalExecution += msg.proc.executionTime;
-                    fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, Memory.start, Memory.end);
-                }
+                MemoryStart = allocateProcess(MemoryTree, msg.proc.memory, msg.proc.processId);
+                msg.proc.mem_start = MemoryStart;
+                enqueue(&Queue, msg.proc);
+
+                TotalExecution += msg.proc.executionTime;
+                int total_size = pow(2, ceil(log2(msg.proc.memory)));
+                fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, MemoryStart, MemoryStart + total_size);
                 printf("process: %d recieved at: %d\n", msg.proc.processId, getClk());
                 recProcess++;
-
-                //  printf("Process recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
             }
 
         } while (rec_val != -1);
@@ -124,7 +116,7 @@ int main(int argc, char *argv[])
             }
 
             char buffer1[5];
-            sprintf(buffer1, "%d", CurrentRunning->runTime); // pass the remianing time
+            sprintf(buffer1, "%d", CurrentRunning->runTime); // pass the remaining time
 
             if (CurrentRunning->state == WAITING)
             {
@@ -141,7 +133,7 @@ int main(int argc, char *argv[])
                 {
                     CurrentRunning->waitingTime = CurrentRunning->startTime - CurrentRunning->arrivalTime; // get waiting time
                     // fptr = fopen("schedular.log", "a+");
-                    fprintf(fptr, "At time  %d  process %d started arr %d total %d remian %d wait %d \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
+                    fprintf(fptr, "At time  %d  process %d started arr %d total %d remain %d wait %d \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
                     // fclose(fptr);
                     arrPids[PidCount] = pid;
                     PidCount++;
@@ -151,7 +143,7 @@ int main(int argc, char *argv[])
             {
                 CurrentRunning->waitingTime = getClk() - CurrentRunning->contextSwitchTime + CurrentRunning->waitingTime;
                 // fptr = fopen("schedular.log", "a+");
-                fprintf(fptr, "At time  %d  process %d resumed arr %d total %d remian %d wait %d \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
+                fprintf(fptr, "At time  %d  process %d resumed arr %d total %d remain %d wait %d \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime);
                 // fclose(fptr);
                 CurrentRunning->startTime = getClk();
                 printf("Start time is %d\n", CurrentRunning->startTime);
@@ -171,21 +163,11 @@ int main(int argc, char *argv[])
                     CurrentRunning->state = FINISHED;
                     TotalFinished1 = getClk();
                     dequeue(&RunningQueue);
-                    if (isEmpty_Queue(&waiting_for_mem) == 0)
-                    {
-                        process memory_process = peek_Queue(&waiting_for_mem);
-                        Memory = allocateProcess(memory_process.memory, memory_process.processId);
-                        if (Memory.id != -1)
-                        {
-                            dequeue(&waiting_for_mem);
 
-                            enqueue(&Queue, memory_process);
-                            fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), memory_process.memory, memory_process.processId, Memory.start, Memory.end);
-                            TotalExecution += memory_process.executionTime;
-                        }
-                    }
-                    struct memStruct memory_done = deallocateProcess(CurrentRunning->memory, CurrentRunning->processId);
-                    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentRunning->memory, CurrentRunning->processId, memory_done.start, memory_done.end);
+                    deallocateProcess(MemoryTree, CurrentRunning->processId);
+                    int total_size = pow(2, ceil(log2(CurrentRunning->memory)));
+                    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentRunning->memory, CurrentRunning->processId, CurrentRunning->mem_start, CurrentRunning->mem_start + total_size);
+
                     TA = getClk() - CurrentRunning->arrivalTime + CurrentRunning->runTime - 1;
                     WTA = (float)TA / CurrentRunning->executionTime;
                     TotalTA += TA;
@@ -194,7 +176,7 @@ int main(int argc, char *argv[])
                     CurrentRunning->finishTime = getClk() + CurrentRunning->runTime - 1;
                     // fptr = fopen("schedular.log", "a+");
                     totalProcessor = getClk() + CurrentRunning->runTime - 1;
-                    fprintf(fptr, "At time  %d  process %d finished arr %d total %d remian %d wait %d TA %d WTA %.2f \n", getClk() + CurrentRunning->runTime - 1, CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime, TA, WTA);
+                    fprintf(fptr, "At time  %d  process %d finished arr %d total %d remain %d wait %d TA %d WTA %.2f \n", getClk() + CurrentRunning->runTime - 1, CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime, TA, WTA);
                     CurrentRunning->runTime = 0; // decrease the remaing time by quantum
                     // fclose(fptr);
                     FinishedProcesses++;
@@ -235,20 +217,10 @@ int main(int argc, char *argv[])
                     CurrentRunning->state = FINISHED;
                     TotalFinished2 = getClk();
                     dequeue(&RunningQueue);
-                    if (isEmpty_Queue(&waiting_for_mem) == 0)
-                    {
-                        process memory_process = peek_Queue(&waiting_for_mem);
-                        Memory = allocateProcess(memory_process.memory, memory_process.processId);
-                        if (Memory.id != -1)
-                        {
-                            dequeue(&waiting_for_mem);
-                            fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), memory_process.memory, memory_process.processId, Memory.start, Memory.end);
-                            enqueue(&Queue, memory_process);
-                            TotalExecution += memory_process.executionTime;
-                        }
-                    }
-                    struct memStruct memory_done = deallocateProcess(CurrentRunning->memory, CurrentRunning->processId);
-                    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentRunning->memory, CurrentRunning->processId, memory_done.start, memory_done.end);
+
+                    deallocateProcess(MemoryTree, CurrentRunning->processId);
+                    int total_size = pow(2, ceil(log2(CurrentRunning->memory)));
+                    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentRunning->memory, CurrentRunning->processId, CurrentRunning->mem_start, CurrentRunning->mem_start + total_size);
                     TA = getClk() - CurrentRunning->arrivalTime;
                     WTA = (float)TA / CurrentRunning->executionTime;
                     TotalTA += TA;
@@ -256,7 +228,7 @@ int main(int argc, char *argv[])
                     TotailWaiting += CurrentRunning->waitingTime;
                     CurrentRunning->finishTime = getClk();
                     // fptr = fopen("schedular.log", "a+");
-                    fprintf(fptr, "At time  %d  process %d finished arr %d total %d remian %d wait %d TA %d WTA %.2f \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime, TA, WTA);
+                    fprintf(fptr, "At time  %d  process %d finished arr %d total %d remain %d wait %d TA %d WTA %.2f \n", getClk(), CurrentRunning->processId, CurrentRunning->arrivalTime, CurrentRunning->executionTime, CurrentRunning->runTime, CurrentRunning->waitingTime, TA, WTA);
                     // fclose(fptr);
                     FinishedProcesses++;
                     // printqueue(&Queue);

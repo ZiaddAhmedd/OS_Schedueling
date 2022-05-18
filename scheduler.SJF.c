@@ -6,12 +6,8 @@ void childHandler(int signum);
 ////////////
 
 struct Queue Queue;
-// struct Queue RunningQueue;
-// struct Queue FinishedQueue;
 struct memTree *MemoryTree;
-struct Queue waiting_for_mem;
 int MemoryStart;
-// int time, nexttime;
 process *CurrentProcess = NULL;
 int TA;
 float WTA;
@@ -33,7 +29,6 @@ int main(int argc, char *argv[])
     signal(SIGINT, schedulerHandler);
     signal(SIGCHLD, childHandler);
     Queue = createQueue();
-    waiting_for_mem = createQueue();
     // RunningQueue = createQueue();
     // FinishedQueue = createQueue();
 
@@ -75,22 +70,10 @@ int main(int argc, char *argv[])
             if (rec_val != -1)
             {
                 MemoryStart = allocateProcess(MemoryTree, msg.proc.memory, msg.proc.processId);
-                printf("%d Start\n", MemoryStart);
-                // printf("%d %d %d %d %d\n",Memory.id,msg.proc.memory,msg.proc.processId,Memory.start,Memory.end);
-                if (MemoryStart == -1)
-                {
-                    enqueue(&waiting_for_mem, msg.proc);
-                }
-                else
-                {
-                    msg.proc.mem_start = MemoryStart;
-                    enqueue(&Queue, msg.proc);
-                    int total_size = pow(2, ceil(log2(msg.proc.memory)));
-                    fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, MemoryStart, MemoryStart + total_size);
-                    // printf("process %d Recieved %d\n", msg.proc.processId, getClk());
-
-                    // printf("\nProcess recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
-                }
+                msg.proc.mem_start = MemoryStart;
+                enqueue(&Queue, msg.proc);
+                int total_size = pow(2, ceil(log2(msg.proc.memory)));
+                fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, MemoryStart, MemoryStart + total_size);
             }
         } while (rec_val != -1);
 
@@ -169,19 +152,7 @@ void childHandler(int signum)
     AvgWTA += WTA;
     CurrentProcess->state = FINISHED;
     fprintf(fptr, "At time %d process %d finished arr %d total %d remain %d wait %d TA %d WTA %.2f \n", CurrentProcess->finishTime, CurrentProcess->processId, CurrentProcess->arrivalTime, CurrentProcess->runTime, 0, CurrentProcess->waitingTime, TA, WTA);
-    if (isEmpty_Queue(&waiting_for_mem) == 0)
-    {
-        process memory_process = peek_Queue(&waiting_for_mem);
-        MemoryStart = allocateProcess(MemoryTree, memory_process.memory, memory_process.processId);
-        if (MemoryStart != -1)
-        {
-            memory_process.mem_start = MemoryStart;
-            dequeue(&waiting_for_mem);
-            enqueue(&Queue, memory_process);
-            int total_size = pow(2, ceil(log2(memory_process.memory)));
-            fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), memory_process.memory, memory_process.processId, MemoryStart, MemoryStart + total_size);
-        }
-    }
+
     deallocateProcess(MemoryTree, CurrentProcess->processId);
     int total_size = pow(2, ceil(log2(CurrentProcess->memory)));
     fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentProcess->memory, CurrentProcess->processId, CurrentProcess->mem_start, CurrentProcess->mem_start + total_size);
