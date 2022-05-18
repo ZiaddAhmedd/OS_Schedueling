@@ -16,7 +16,7 @@ typedef struct process
     int finishTime;
     int startTime;
     int memory;
-    // int mem_start_position;
+    int mem_start;
 } process;
 
 process initializeProcess(

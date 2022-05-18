@@ -15,8 +15,7 @@
 #include "process_data.h" //msh mot2den hatsht8l wla laa,lw laa include in queue.h
 #include "CircularQueue.h"
 #include "queue.h"
-#include "mem_mngr.h"
-
+#include "mem_Tree.h"
 typedef short bool;
 #define true 1
 #define false 0

@@ -8,8 +8,9 @@ void childHandler(int signum);
 struct Queue Queue;
 // struct Queue RunningQueue;
 // struct Queue FinishedQueue;
+struct memTree *memorytree;
 struct Queue waiting_for_mem;
-struct memStruct Memory;
+int MemoryStart;
 // int time, nexttime;
 process *CurrentProcess = NULL;
 int TA;
@@ -17,17 +18,18 @@ float WTA;
 FILE *fptr;
 FILE *memfptr;
 process data;
-int allRunningTime = 1;
+int allRunningTime = 0;
 int recProcess = 0;
 int finishedProcess = 0;
 int processCount = 0;
 int msgid;
 float AvgWTA = 0;
 float AvgWaiting = 0;
+
 int main(int argc, char *argv[])
 {
     initClk();
-    initMemMngr();
+    memorytree=create_memTree(1024);
     signal(SIGINT, schedulerHandler);
     signal(SIGCHLD, childHandler);
     Queue = createQueue();
@@ -72,16 +74,19 @@ int main(int argc, char *argv[])
             }
             if (rec_val != -1)
             {
-                Memory = allocateProcess(msg.proc.memory, msg.proc.processId);
+                MemoryStart = allocateProcess(memorytree, msg.proc.memory, msg.proc.processId);
+                printf("%d Start\n", MemoryStart);
                 // printf("%d %d %d %d %d\n",Memory.id,msg.proc.memory,msg.proc.processId,Memory.start,Memory.end);
-                if (Memory.id == -1)
+                if (MemoryStart == -1)
                 {
                     enqueue(&waiting_for_mem, msg.proc);
                 }
                 else
                 {
+                    msg.proc.mem_start = MemoryStart;
                     enqueue(&Queue, msg.proc);
-                    fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, Memory.start, Memory.end);
+                    int total_size = pow(2, ceil(log2(msg.proc.memory)));
+                    fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, MemoryStart, MemoryStart + total_size);
                     // printf("process %d Recieved %d\n", msg.proc.processId, getClk());
 
                     // printf("\nProcess recieved: %d %d %d %d\n", msg.proc.processId, msg.proc.arrivalTime, msg.proc.runTime, msg.proc.priority);
@@ -167,16 +172,19 @@ void childHandler(int signum)
     if (isEmpty_Queue(&waiting_for_mem) == 0)
     {
         process memory_process = peek_Queue(&waiting_for_mem);
-        Memory = allocateProcess(memory_process.memory, memory_process.processId);
-        if (Memory.id != -1)
+        MemoryStart = allocateProcess(memorytree, memory_process.memory, memory_process.processId);
+        if (MemoryStart != -1)
         {
+            memory_process.mem_start = MemoryStart;
             dequeue(&waiting_for_mem);
             enqueue(&Queue, memory_process);
-            fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), memory_process.memory, memory_process.processId, Memory.start, Memory.end);
+            int total_size = pow(2, ceil(log2(memory_process.memory)));
+            fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), memory_process.memory, memory_process.processId, MemoryStart, MemoryStart + total_size);
         }
     }
-    struct memStruct memory_done = deallocateProcess(CurrentProcess->memory, CurrentProcess->processId);
-    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentProcess->memory, CurrentProcess->processId, memory_done.start, memory_done.end);
+    deallocateProcess(memorytree, CurrentProcess->processId);
+    int total_size = pow(2, ceil(log2(CurrentProcess->memory)));
+    fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentProcess->memory, CurrentProcess->processId, CurrentProcess->mem_start, CurrentProcess->mem_start + total_size);
 
     CurrentProcess = NULL;
     signal(SIGCHLD, childHandler);
