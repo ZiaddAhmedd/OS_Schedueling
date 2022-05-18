@@ -181,14 +181,14 @@ int deallocateProcess(struct memTree *tree, int pid)
 
   if (parent->left == found_node)
   {
-    if (parent->right->state == EMPTY )
+    if (parent->right->state == EMPTY || parent->right->state == ROOT)
     {
       recombine_memory(parent);
     }
   }
   else if (parent->right == found_node)
   {
-    if (parent->left->state == EMPTY )
+    if (parent->left->state == EMPTY || parent->right->state == ROOT)
     {
       recombine_memory(parent);
     }
