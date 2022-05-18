@@ -16,7 +16,7 @@ int TotailWaiting = 0;
 int MemoryStart;
 int TA;
 int totalProcessor = 0;
-int quantum;
+int quantum = 1;
 float WTA;
 float TotalTA = 0;
 float TotalWTA = 0;
@@ -46,15 +46,15 @@ int main(int argc, char *argv[])
     key_t key_id;
     int processCount = atoi(argv[1]);
 
-    quantum = atoi(argv[2]);
+    //quantum = atoi(argv[2]);
     key_id = ftok("./clk.c", 'Z');            // create unique key
     msgid = msgget(key_id, 0666 | IPC_CREAT); // create message queue and return id
 
     int time, nextTime;
     time = getClk();
 
-    fptr = fopen("Scheduler_RR.log", "w"); // For Files
-    memfptr = fopen("Memory_RR.log", "w"); // For Files
+    fptr = fopen("Scheduler_MLFL.log", "w"); // For Files
+    memfptr = fopen("Memory_MLFL.log", "w"); // For Files
     fprintf(fptr, "#At time x process y state arr w total z remain y wait k \n");
     fprintf(memfptr, "#At time x allocated y bytes for process z from i to j \n");
 
@@ -203,6 +203,8 @@ int main(int argc, char *argv[])
                     // fclose(fptr);
                     printf("STOP\n");
                     CurrentRunning->state = PREEMPTED;
+                    CurrentRunning->priority++;
+                    fprintf(fptr,"Process %d has been moved to level %d\n", CurrentRunning->processId, CurrentRunning->priority);
                     dequeue(&RunningQueue);
 
                     enqueue(&Queue, *CurrentRunning);

@@ -122,11 +122,12 @@ int main(int argc, char *argv[])
         }
         else if (algorithm_type == MLFL)
         {
-            char quantum_char[10];
-            sprintf(quantum_char, "%d", quantum);
-
-            char *argv[] = {"./scheduler.MLFL.out", quantum_char, 0};
-            execve(argv[0], &argv[0], NULL);
+            char buffer1[20];
+            sprintf(buffer1, "%d", processCount);
+            argv[1] = buffer1;
+            // argv[1] = process_count ; needs to be fixeds
+            if (execv("./scheduler.MLFL.out", argv) == -1)
+                perror("failed to execv");
         }
     }
     // char *arr[] = {"./scheduler.c", NULL};
@@ -175,10 +176,11 @@ int main(int argc, char *argv[])
                 msg.proc.priority = priorities[currentProcessIndex];
             }
             send_to_sch = msgsnd(msgid, &msg, sizeof(msg.proc), !IPC_NOWAIT);
+
             if (send_to_sch == 0)
             {
                 //printf("message successful at time %d \n", x);
-               // printf ("sent: %d %d %d %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
+                //printf ("sent: %d %d %d %d\n",ids[currentProcessIndex],arrivals[currentProcessIndex], runtimes[currentProcessIndex],priorities[currentProcessIndex] );
             }
             // printf("sent process %d\n", currentProcessIndex);
             // 2. Increment the current process index.

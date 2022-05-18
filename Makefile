@@ -4,6 +4,7 @@ build:
 	gcc scheduler.SJF.c -o scheduler.SJF.out -lm
 	gcc scheduler.HPF.c -o scheduler.HPF.out -lm
 	gcc scheduler.RR.c -o scheduler.RR.out -lm
+	gcc scheduler.Multi.c -o scheduler.MLFL.out -lm
 	gcc process.c -o process.out -lm
 	gcc test_generator.c -o test_generator.out -lm
 
@@ -13,4 +14,4 @@ clean:
 all: clean build
 
 run:
-	./process_generator.out processes.txt -sch 1 -q 3
+	./process_generator.out processes.txt -sch 3 -q 3
