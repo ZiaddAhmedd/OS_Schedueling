@@ -35,10 +35,10 @@ struct memTree
   struct MemNode *root;
 };
 
-struct memTree *create_memTree(int mem_size)
+struct memTree *create_memTree()
 {
   struct memTree *tree = (struct memTree *)malloc(sizeof(struct memTree));
-  tree->root = create_node(mem_size, NULL);
+  tree->root = create_node(MEM_SIZE, NULL);
   tree->root->state = ROOT;
   tree->root->mem_start_position = 0;
   return tree;

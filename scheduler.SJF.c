@@ -8,7 +8,7 @@ void childHandler(int signum);
 struct Queue Queue;
 // struct Queue RunningQueue;
 // struct Queue FinishedQueue;
-struct memTree *memorytree;
+struct memTree *MemoryTree;
 struct Queue waiting_for_mem;
 int MemoryStart;
 // int time, nexttime;
@@ -29,7 +29,7 @@ float AvgWaiting = 0;
 int main(int argc, char *argv[])
 {
     initClk();
-    memorytree=create_memTree(1024);
+    MemoryTree = create_memTree();
     signal(SIGINT, schedulerHandler);
     signal(SIGCHLD, childHandler);
     Queue = createQueue();
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
             }
             if (rec_val != -1)
             {
-                MemoryStart = allocateProcess(memorytree, msg.proc.memory, msg.proc.processId);
+                MemoryStart = allocateProcess(MemoryTree, msg.proc.memory, msg.proc.processId);
                 printf("%d Start\n", MemoryStart);
                 // printf("%d %d %d %d %d\n",Memory.id,msg.proc.memory,msg.proc.processId,Memory.start,Memory.end);
                 if (MemoryStart == -1)
@@ -172,7 +172,7 @@ void childHandler(int signum)
     if (isEmpty_Queue(&waiting_for_mem) == 0)
     {
         process memory_process = peek_Queue(&waiting_for_mem);
-        MemoryStart = allocateProcess(memorytree, memory_process.memory, memory_process.processId);
+        MemoryStart = allocateProcess(MemoryTree, memory_process.memory, memory_process.processId);
         if (MemoryStart != -1)
         {
             memory_process.mem_start = MemoryStart;
@@ -182,7 +182,7 @@ void childHandler(int signum)
             fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), memory_process.memory, memory_process.processId, MemoryStart, MemoryStart + total_size);
         }
     }
-    deallocateProcess(memorytree, CurrentProcess->processId);
+    deallocateProcess(MemoryTree, CurrentProcess->processId);
     int total_size = pow(2, ceil(log2(CurrentProcess->memory)));
     fprintf(memfptr, "At time %d freed %d bytes for process %d from %d to %d\n", getClk(), CurrentProcess->memory, CurrentProcess->processId, CurrentProcess->mem_start, CurrentProcess->mem_start + total_size);
 
