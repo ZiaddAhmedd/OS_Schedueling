@@ -53,7 +53,7 @@ int main(int argc, char *argv[])
     int time, nextTime;
     time = getClk();
 
-    fptr = fopen("Schedular_HPF.log", "w"); // For Files
+    fptr = fopen("Scheduler_HPF.log", "w"); // For Files
     memfptr = fopen("Memory_HPF.log", "w"); // For Files
     fprintf(fptr, "#At time x process y state arr w total z remain y wait k \n");
     fprintf(memfptr, "#At time x allocated y bytes for process z from i to j \n");
