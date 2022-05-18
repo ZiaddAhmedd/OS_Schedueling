@@ -87,9 +87,10 @@ int main(int argc, char *argv[])
                 MemoryStart = allocateProcess(MemoryTree, msg.proc.memory, msg.proc.processId);
                 msg.proc.mem_start = MemoryStart;
                 enqueue(&Queue, msg.proc);
-
-                TotalExecution += msg.proc.executionTime;
                 int total_size = pow(2, ceil(log2(msg.proc.memory)));
+                
+                TotalExecution += msg.proc.executionTime;
+
                 fprintf(memfptr, "At time %d allocated %d bytes for process %d from %d to %d\n", getClk(), msg.proc.memory, msg.proc.processId, MemoryStart, MemoryStart + total_size);
                 printf("process: %d recieved at: %d\n", msg.proc.processId, getClk());
                 recProcess++;

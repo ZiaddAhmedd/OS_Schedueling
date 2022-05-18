@@ -5,7 +5,7 @@
 #define EMPTY 0
 #define HAS_PROCESS 1
 #define HAS_CHILD 2
-#define ROOT 4
+#define ROOT 3
 
 struct MemNode
 {
@@ -137,38 +137,29 @@ int allocateProcess(struct memTree *tree, int process_size, int pid)
   return found_node->mem_start_position;
 }
 
-void delete_children(struct MemNode *found_node_parent)
+void delete_children(struct MemNode *current_deleted_node)
 {
-  free(found_node_parent->left);
-  found_node_parent->left = NULL;
-  free(found_node_parent->right);
-  found_node_parent->right = NULL;
-  found_node_parent->state = EMPTY;
+  free(current_deleted_node->left);
+  current_deleted_node->left = NULL;
+  free(current_deleted_node->right);
+  current_deleted_node->right = NULL;
+  current_deleted_node->state = EMPTY;
 }
 
 void recombine_memory(struct MemNode *parent)
 {
-  struct MemNode *found_node_parent = parent;
+  struct MemNode *current_deleted_node = parent;
 
-  while (found_node_parent)
+  while (current_deleted_node)
   {
-    if (found_node_parent->left->state == EMPTY &&
-        found_node_parent->right->state == EMPTY)
+    if (current_deleted_node->left->state == EMPTY &&
+        current_deleted_node->right->state == EMPTY)
     {
-      delete_children(found_node_parent);
+      delete_children(current_deleted_node);
     }
 
-    if (found_node_parent->state != ROOT)
-      found_node_parent = found_node_parent->parent;
-  }
-}
-void decrementCapacity(struct MemNode *parent)
-{
-  // decrementing till root
-  int size_to_decrement = parent->size / 2;
-  while (parent != NULL)
-  {
-    parent = parent->parent;
+    if (current_deleted_node->state != ROOT)
+      current_deleted_node = current_deleted_node->parent;
   }
 }
 
